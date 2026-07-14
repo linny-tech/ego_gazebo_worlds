@@ -1,0 +1,16 @@
+EGO Gazebo curved tunnel validation: PASS
+Map volume: 50.0 x 50.0 x 10.0 m
+Tunnel segment count: 8
+Centerline length: 53.675 m
+Significant bends (>= 15 deg): 7
+Maximum bend angle: 56.310 deg
+Tunnel inner-width range: 4.2 - 4.8 m
+Tunnel clear-height range: 3.5 - 4.4 m
+Minimum lateral clearance from center after protrusion: 1.60 m
+Minimum vertical clearance below low ceiling: 3.05 m
+Low-ceiling constrictions: 4
+Side-wall protrusions: 4
+Primitive obstacle geometry: boxes only (no cylinders or spheres)
+PX4 spawn position: (-22.0, -8.0, 0.3) m
+Suggested EGO goal: (22.0, -5.0) m
+Continuous curved centerline route: PASS

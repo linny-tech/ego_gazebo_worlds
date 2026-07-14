@@ -10,6 +10,7 @@ catkin_install_python(
     scripts/generate_ego_world.py
     scripts/generate_forest_world.py
     scripts/generate_residential_world.py
+    scripts/generate_curved_tunnel_world.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
