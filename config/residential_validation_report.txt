@@ -1,0 +1,12 @@
+EGO Gazebo residential map validation: PASS
+Map volume: 50.0 x 50.0 x 10.0 m
+Residence count: 8
+Collision roof count: 8
+Ground-to-roof rectangular pillars: 32
+Primitive obstacle geometry: boxes only (no cylinders or spheres)
+Minimum residence gap: 2.800 m
+Closest residences: residence_01 / residence_02
+Central road clear width: 6.0 m
+PX4 spawn position: (-22.0, 0.0, 0.2) m
+Suggested EGO goal: (22.0, 0.0) m
+West-to-east ground-level route through community gates: PASS
