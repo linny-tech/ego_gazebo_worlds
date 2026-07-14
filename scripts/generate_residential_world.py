@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate and validate a 50 x 50 x 10 m residential Gazebo world."""
+"""Generate and validate a 50 x 50 x 10 m gable-roof residential world."""
 
 import argparse
 import csv
@@ -53,7 +53,9 @@ class Residence:
 
 def generate_layout() -> List[Residence]:
     """Arrange two residential rows around a wide central community road."""
-    heights = (8.8, 7.8, 9.6, 8.4, 8.4, 9.2, 7.6, 8.8)
+    # Nominal roof peaks span the requested 4-10 m range without forming a
+    # monotonous skyline. Panel thickness keeps the physical top below 10 m.
+    heights = (4.6, 6.4, 9.2, 7.8, 8.6, 5.4, 9.8, 7.0)
     residences: List[Residence] = []
     index = 0
     for y, front_sign in ((14.0, -1), (-14.0, 1)):
@@ -91,8 +93,8 @@ def validate_layout(residences: Sequence[Residence], world: str = "") -> str:
     for index, residence in enumerate(residences):
         if residence.front_sign not in (-1, 1):
             raise ValueError(f"{residence.name}: invalid front direction")
-        if residence.height > MAP_HEIGHT or residence.height < 6.0:
-            raise ValueError(f"{residence.name}: roof height outside map volume")
+        if residence.height > MAP_HEIGHT or residence.height < 4.0:
+            raise ValueError(f"{residence.name}: roof peak outside the 4-10 m range")
         if abs(residence.x) + residence.width / 2.0 > WALL_INNER_EDGE - 1.0:
             raise ValueError(f"{residence.name}: exceeds east/west residential zone")
         if abs(residence.y) + residence.depth / 2.0 > WALL_INNER_EDGE - 1.0:
@@ -116,10 +118,14 @@ def validate_layout(residences: Sequence[Residence], world: str = "") -> str:
         lowered = world.lower()
         if "<cylinder" in lowered or "<sphere" in lowered:
             raise ValueError("Residential world must use box geometry only")
-        roof_count = world.count("roof_collision")
+        north_roof_count = world.count("roof_north_collision")
+        south_roof_count = world.count("roof_south_collision")
         pillar_count = world.count("pillar_") // 2
-        if roof_count != len(residences):
-            raise ValueError(f"Expected {len(residences)} collision roofs, got {roof_count}")
+        if north_roof_count != len(residences) or south_roof_count != len(residences):
+            raise ValueError(
+                f"Expected {len(residences) * 2} sloped roof panels, got "
+                f"{north_roof_count + south_roof_count}"
+            )
         if pillar_count != len(residences) * PILLARS_PER_RESIDENCE:
             raise ValueError(
                 f"Expected {len(residences) * PILLARS_PER_RESIDENCE} pillars, "
@@ -131,9 +137,12 @@ def validate_layout(residences: Sequence[Residence], world: str = "") -> str:
             "EGO Gazebo residential map validation: PASS",
             f"Map volume: {MAP_SIZE:.1f} x {MAP_SIZE:.1f} x {MAP_HEIGHT:.1f} m",
             f"Residence count: {len(residences)}",
-            f"Collision roof count: {len(residences)}",
+            f"Triangular gable roof count: {len(residences)}",
+            f"Sloped rectangular collision panels: {len(residences) * 2}",
             f"Ground-to-roof rectangular pillars: {len(residences) * PILLARS_PER_RESIDENCE}",
             "Primitive obstacle geometry: boxes only (no cylinders or spheres)",
+            f"House roof-peak height range: {min(item.height for item in residences):.1f} - "
+            f"{max(item.height for item in residences):.1f} m",
             f"Minimum residence gap: {minimum_gap:.3f} m",
             f"Closest residences: {closest_pair[0]} / {closest_pair[1]}",
             f"Central road clear width: {CENTRAL_ROUTE_HALF_WIDTH * 2.0:.1f} m",
@@ -157,15 +166,18 @@ def box_elements(
     depth: float,
     height: float,
     color: Tuple[float, float, float, float],
+    roll: float = 0.0,
+    pitch: float = 0.0,
+    yaw: float = 0.0,
 ) -> str:
     color_text = rgba(color)
     geometry = f"<geometry><box><size>{width:.3f} {depth:.3f} {height:.3f}</size></box></geometry>"
     return f"""        <collision name='{name}_collision'>
-          <pose>{x:.3f} {y:.3f} {z:.3f} 0 0 0</pose>
+          <pose>{x:.3f} {y:.3f} {z:.3f} {roll:.6f} {pitch:.6f} {yaw:.6f}</pose>
           {geometry}
         </collision>
         <visual name='{name}_visual'>
-          <pose>{x:.3f} {y:.3f} {z:.3f} 0 0 0</pose>
+          <pose>{x:.3f} {y:.3f} {z:.3f} {roll:.6f} {pitch:.6f} {yaw:.6f}</pose>
           {geometry}
           <material><ambient>{color_text}</ambient><diffuse>{color_text}</diffuse></material>
         </visual>"""
@@ -173,10 +185,16 @@ def box_elements(
 
 def residence_model(residence: Residence) -> str:
     wall_thickness = 0.34
-    roof_thickness = 0.40
+    roof_thickness = 0.24
     pillar_size = 0.48
     door_width = 1.60
-    roof_bottom = residence.height - roof_thickness
+    roof_rise = min(2.2, max(1.4, residence.height * 0.22))
+    eave_height = residence.height - roof_rise
+    roof_half_span = residence.depth / 2.0 + 0.35
+    roof_pitch = math.atan2(roof_rise, roof_half_span)
+    roof_panel_length = math.hypot(roof_half_span, roof_rise) + 0.18
+    roof_panel_y = roof_half_span / 2.0
+    roof_panel_z = eave_height + roof_rise / 2.0
     front_y = residence.front_sign * (residence.depth / 2.0 - wall_thickness / 2.0)
     back_y = -front_y
     side_x = residence.width / 2.0 - wall_thickness / 2.0
@@ -191,32 +209,38 @@ def residence_model(residence: Residence) -> str:
 
     parts = [
         box_elements(
-            "roof", 0.0, 0.0, residence.height - roof_thickness / 2.0,
-            residence.width + 0.6, residence.depth + 0.6, roof_thickness, roof_color,
+            "roof_north", 0.0, roof_panel_y, roof_panel_z,
+            residence.width + 0.7, roof_panel_length, roof_thickness, roof_color,
+            roll=-roof_pitch,
         ),
         box_elements(
-            "back_wall", 0.0, back_y, roof_bottom / 2.0,
-            residence.width, wall_thickness, roof_bottom, wall_color,
+            "roof_south", 0.0, -roof_panel_y, roof_panel_z,
+            residence.width + 0.7, roof_panel_length, roof_thickness, roof_color,
+            roll=roof_pitch,
         ),
         box_elements(
-            "left_wall", -side_x, 0.0, roof_bottom / 2.0,
-            wall_thickness, residence.depth, roof_bottom, wall_color,
+            "back_wall", 0.0, back_y, eave_height / 2.0,
+            residence.width, wall_thickness, eave_height, wall_color,
         ),
         box_elements(
-            "right_wall", side_x, 0.0, roof_bottom / 2.0,
-            wall_thickness, residence.depth, roof_bottom, wall_color,
+            "left_wall", -side_x, 0.0, eave_height / 2.0,
+            wall_thickness, residence.depth, eave_height, wall_color,
         ),
         box_elements(
-            "front_left", -facade_x, front_y, roof_bottom / 2.0,
-            facade_width, wall_thickness, roof_bottom, wall_color,
+            "right_wall", side_x, 0.0, eave_height / 2.0,
+            wall_thickness, residence.depth, eave_height, wall_color,
         ),
         box_elements(
-            "front_right", facade_x, front_y, roof_bottom / 2.0,
-            facade_width, wall_thickness, roof_bottom, wall_color,
+            "front_left", -facade_x, front_y, eave_height / 2.0,
+            facade_width, wall_thickness, eave_height, wall_color,
         ),
         box_elements(
-            "door_lintel", 0.0, front_y, roof_bottom - 0.55,
-            door_width, wall_thickness, 1.10, wall_color,
+            "front_right", facade_x, front_y, eave_height / 2.0,
+            facade_width, wall_thickness, eave_height, wall_color,
+        ),
+        box_elements(
+            "door_lintel", 0.0, front_y, eave_height - 0.45,
+            door_width, wall_thickness, 0.90, wall_color,
         ),
     ]
     for pillar_index, (x, y) in enumerate(
@@ -225,8 +249,8 @@ def residence_model(residence: Residence) -> str:
     ):
         parts.append(
             box_elements(
-                f"pillar_{pillar_index}", x, y, roof_bottom / 2.0,
-                pillar_size, pillar_size, roof_bottom, pillar_color,
+                f"pillar_{pillar_index}", x, y, eave_height / 2.0,
+                pillar_size, pillar_size, eave_height, pillar_color,
             )
         )
 
@@ -307,7 +331,7 @@ def world_text(residences: Sequence[Residence]) -> str:
     joined_models = "\n".join(models)
     return f"""<?xml version='1.0'?>
 <sdf version='1.6'>
-  <world name='ego_residential_50x50x10'>
+  <world name='ego_residential_gable_50x50x10'>
     <gravity>0 0 -9.8066</gravity>
     <magnetic_field>6.0e-06 2.3e-05 -4.2e-05</magnetic_field>
     <atmosphere type='adiabatic'/>
