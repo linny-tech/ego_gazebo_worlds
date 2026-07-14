@@ -1,0 +1,11 @@
+EGO Gazebo map validation: PASS
+Map volume: 50.0 x 50.0 x 4.0 m
+Obstacle count: 27
+Boxes: 17
+Cylinders: 10
+Large-footprint obstacles: 3
+Center clear radius: 5.000 m
+Required pair clearance: > 1.500 m
+Conservative minimum pair clearance: 1.891 m
+Closest pair: box_03 / box_11
+Minimum wall clearance: 2.412 m

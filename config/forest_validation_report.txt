@@ -1,0 +1,13 @@
+EGO Gazebo forest map validation: PASS
+Map volume: 50.0 x 50.0 x 5.0 m
+Tree count: 72
+PX4 spawn position: (-21.0, 0.0, 0.2) m
+Suggested EGO goal: (21.0, 0.0) m
+Required tree clearance: > 1.800 m
+Conservative minimum tree clearance: 2.081 m
+Closest pair: tree_010 / tree_067
+Minimum wall clearance: 1.705 m
+Minimum spawn-area clearance: 6.767 m
+Minimum goal-area clearance: 7.069 m
+West-to-east route (0.65 m inflation): PASS
+Tree crowns: visual only; trunks provide LiDAR/collision obstacles

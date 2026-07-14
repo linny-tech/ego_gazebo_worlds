@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>ego_gazebo_worlds</name>
+  <version>0.1.0</version>
+  <description>Gazebo worlds for PX4 MID360 Fast-LIO and EGO-Planner tests.</description>
+
+<maintainer email="lin@gmail.com">lin</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <exec_depend>gazebo_ros</exec_depend>
+  <exec_depend>roslaunch</exec_depend>
+
+  <export/>
+</package>
+
